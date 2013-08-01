@@ -46,3 +46,16 @@ Starting a job requires a JSON payload
 - handling stdio
 - pre-opened file-descriptors
 
+## Usage
+
+```
+init -- next command and args
+```
+
+After init starts its HTTP server,
+it passes the task of booting the system off to another process.
+You specify the next process by passing the command to init during start.
+These parameters can, and should, be passed to init by grub.
+
+The next command effectively decides what order to boot system daemons in.
+
