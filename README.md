@@ -60,7 +60,60 @@ You specify the next process by passing the command to init during start.
 These parameters can, and should, be passed to init by grub.
 
 The next command effectively decides what order to boot system daemons in.
-The `npkg` command defined in `nodeos-npkg` provides a nice interface between init and NodeJS packages installed on the system.
+The `npkg` command defined in `nodeos-npkg` provides a nice interface between init 
+and NodeJS packages installed on the system.
+
+```
+init -- npkg start boot-system
+
++--------+                 
+|        |                 
+|  init  |                 
+|        |                 
++--------+                 
+    |                            +--------+   <--+
+    |        run command         |        |      |
+    +--------------------------->|  npkg  |      |
+    |  `npkg start boot-system`  |        |      |
+    |                            +--------+      |
+    |                                |           |
+    |                                |           |
+    |     use http api to start      |           |
+    |<-------------------------------+           |    these processes
+    |   nodejs package `boot-system`             |--  exit after setup
+    |                                            |
+    |                            +--------+      |
+    |      run npm start on      |        |      |
+    +--------------------------->|        |      |
+    |     package `boot-system`  |        |      |
+    |                            +--------+      |
+    |                                |           |
+    |                                |           |
+    |     use http api to start      |           |
+    |<-------------------------------+        <--+
+    |      other system daemons
+    |
+    |                       +--------+        <--+         
+    |                       |        |           |      
+    +---------------------->|  dhcp  |           |      
+    |                       |        |           |      
+    |                       +--------+           |
+    |                                            |
+    |                       +--------+           |      
+    |                       |        |           |    these processes   
+    +---------------------->| getty  |           |--  are long-lived 
+    |                       |        |           |    system daemons
+    |                       +--------+           |
+    |                                            |
+    |                       +--------+           |      
+    |                       |        |           |      
+    +---------------------->|  sshd  |           |      
+                            |        |           |      
+                            +--------+        <--+
+```
+
+The NodeOS equivalent of a runlevel is the boot packaged run by the first `npkg` command.
+Init runs as the root user, and resolves packages from `/root/lib/node_modules`.
 
 ## Roadmap
 
