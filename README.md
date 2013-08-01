@@ -28,7 +28,7 @@ DELETE /job/:id            <-- clear a stopped job
 
 Starting a job requires a JSON payload
 
-```
+```json
 {
   "exec": "node",
   "args": [ "server.js" ],
