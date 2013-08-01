@@ -58,4 +58,5 @@ You specify the next process by passing the command to init during start.
 These parameters can, and should, be passed to init by grub.
 
 The next command effectively decides what order to boot system daemons in.
+The `npkg` command defined in `nodeos-npkg` provides a nice interface between init and NodeJS packages installed on the system.
 
