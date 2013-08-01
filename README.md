@@ -45,6 +45,7 @@ Starting a job requires a JSON payload
 - restart semantics
 - handling stdio
 - pre-opened file-descriptors
+- authentication and access control
 
 ## Usage
 
