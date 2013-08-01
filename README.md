@@ -61,3 +61,10 @@ These parameters can, and should, be passed to init by grub.
 The next command effectively decides what order to boot system daemons in.
 The `npkg` command defined in `nodeos-npkg` provides a nice interface between init and NodeJS packages installed on the system.
 
+## Roadmap
+
+While not intended for initial release, there are a number of things I want to do with init around streaming:
+
+1. event streams via [Server Sent Events](http://www.html5rocks.com/en/tutorials/eventsource/basics/)
+2. streaming HTTP for stdio
+3. ad-hoc io redirection (a processes STDIO can be redirected without restarting the process)
