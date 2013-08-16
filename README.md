@@ -37,7 +37,9 @@ Starting a job requires a JSON payload
   "envs": {
     "PORT": "80",
     "PATH": "/bin:/root/bin"
-  }
+  },
+  "user": "www",
+  "group": "www"
 }
 ```
 
