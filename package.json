@@ -1,0 +1,16 @@
+{
+  "name": "bin-init",
+  "version": "0.0.0",
+  "description": "NodeOS Init Daemon",
+  "bin": {
+    "init": "init.js"
+  },
+  "repository": "",
+  "author": "Jacob Groundwater <groundwater@gmail.com>",
+  "license": "MIT",
+  "dependencies": {
+    "concat-stream": "~1.0.0",
+    "express": "~3.3.4",
+    "src-sockios": "~0.0.0"
+  }
+}
