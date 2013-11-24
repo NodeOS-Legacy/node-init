@@ -10,7 +10,6 @@
   "license": "MIT",
   "dependencies": {
     "concat-stream": "~1.0.0",
-    "express": "~3.3.4",
     "src-sockios": "~0.0.0"
   }
 }

@@ -6,7 +6,6 @@ var assert  = require('assert');
 
 //
 var cat     = require('concat-stream');
-var express = require('express');
 var io      = require('src-sockios');
 
 //
