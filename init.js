@@ -7,6 +7,7 @@ var assert  = require('assert');
 //
 var cat     = require('concat-stream');
 var io      = require('src-sockios');
+var restify = require('restify');
 
 //
 var Runner  = require('./runner.js')(spawn);
@@ -26,12 +27,8 @@ if(0 === io.loopbackUp()){
   console.log('Failed');
 }
 
-// RESTful Express Application
-
 // Keep an Active Job List
 var jobs = {};
-
-var app  = express();
 
 // start a daemon process
 function start(man){
@@ -77,7 +74,9 @@ function start(man){
 
 }
 
-app.post('/job',function(req,res){
+var app = restify.createServer();
+
+app.post('/job', function(req,res){
   req.pipe(cat(function(body){
     console.log('Create Job',body.toString());
     try{
@@ -90,12 +89,12 @@ app.post('/job',function(req,res){
   }));
 });
 
-app.get('/jobs',function(req,res){
+app.get('/jobs', function(req,res){
   res.send(Object.keys(jobs));
   console.log('List Job');
 });
 
-app.get('/job/:id',function(req,res){
+app.get('/job/:id', function(req,res){
   var job;
   var jobid = req.params.id;
   console.log('Get Job',req.params.id);
@@ -106,7 +105,7 @@ app.get('/job/:id',function(req,res){
   }
 });
 
-app.put('/job/:id/sig/:signal',function(req,res){
+app.put('/job/:id/sig/:signal', function(req,res){
   var job;
   var jobid  = req.params.id;
   var signal = req.params.signal;
@@ -119,7 +118,7 @@ app.put('/job/:id/sig/:signal',function(req,res){
   }
 });
 
-app.del('/job/:id',function(req,res){
+app.del('/job/:id', function(req,res){
   console.log('Delete Job',req.params.id);
 });
 
