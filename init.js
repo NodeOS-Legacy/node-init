@@ -58,22 +58,29 @@ Init.prototype.start = function (name, stanza){
   runner.args = stanza.args;
 
   var proc    = runner.run();
+  var job     = jobs[name] || new Job(stanza);
 
   proc.on('error', function (err) {
     log.error('Error Spawning proc', err);
   });
 
+  // restart process on failure
+  // don't restart when a signal is received
   proc.on('exit', function (code, signal) {
-    if (code)   log.info("Process [%d] exited with code", proc.pid, code);
+    if (code===0 || code) log.info("Process [%d] exited with code", proc.pid, code);
     if (signal) log.info("Process [%d] exited from signal", proc.pid, signal);
 
     job.lastExit = code || signal;
+    job.status   = 'success';
 
     // we assume processes that exit with a non-zero code failed
     // and need to be restarted. in order to avoid crazyness we
     // delay the process restart by 1 second
-    if (code!==0) setTimeout(function(){
+    // 
+    // we do not restart when a signal kills the process
+    if (code) setTimeout(function(){
       log.info("Respawning Job", name);
+      job.status = 'failed';
       job.respawn++;
       init.start(name, stanza);
     }, 1000);
@@ -81,9 +88,8 @@ Init.prototype.start = function (name, stanza){
     return;
   });
 
-  var job = this.jobs[name] || new Job(stanza);
-
-  job.pid = proc.pid;
+  job.pid    = proc.pid;
+  job.status = 'running';
 
   this.jobs[name]    = job;
   this.proc[job.pid] = proc;
@@ -140,8 +146,9 @@ app.put('/job/:id/sig/:signal', function(req,res){
 });
 
 app.del('/job/:id', function(req,res){
-  log.info('Delete Job',req.params.id);
-  delete init.jobs[req.params.id];
+  var name = req.params.id;
+  log.info('Delete Job',name);
+  delete init.jobs[name];
 });
 
 function shutdown() {
