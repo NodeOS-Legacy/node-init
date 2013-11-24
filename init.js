@@ -1,9 +1,16 @@
 #!/usr/bin/env node
 
 var spawn   = require('child_process').spawn;
+var fs      = require('fs');
+var assert  = require('assert');
+
+//
 var cat     = require('concat-stream');
 var express = require('express');
 var io      = require('src-sockios');
+
+//
+var Runner  = require('./runner.js')(spawn);
 
 // Injectable Configurations
 var PORT = process.env.PORT || 1;
@@ -12,39 +19,63 @@ var BOOT = process.env.BOOT || 0;
 
 console.log('Starting Init Process');
 
-// Keep an Active Job List
-var jobs = {};
-
 // Bring Loopback Device Up for HTTP Process Control
-var loop = io.loopbackUp();
-if(loop===0){
-  console.log('Activated Loopback Device');
+process.stdout.write('Loopback Device: ');
+if(0 === io.loopbackUp()){
+  console.log("Activated");
 }else{
-  console.log('Failed to Activate Loopback Device');
+  console.log('Failed');
 }
 
 // RESTful Express Application
 
+// Keep an Active Job List
+var jobs = {};
+
 var app  = express();
 
+// start a daemon process
 function start(man){
+
+  // certain properties are required or insanity prevails
+  assert(man.cwd,  "job stanza requires a cwd path");
+  assert(man.env,  "job stanza requires an environment object");
+  assert(man.exec, "job stanza requires an exec field");
+  assert(man.args, "job stanza requires an args array");
+
   var opt = {
-    cwd : man.cwd,
-    env : man.env,
-    stdio: 'inherit'
+    cwd   : man.cwd,
+    env   : man.env,
+
+    // for now we log to inits stdout
+    // eventually this will redirecto to a log file
+    stdio : 'inherit'
   }
+
   var job = spawn(man.exec,man.args,opt);
+
   job.on('error',function(err){
     console.log('Error Spawning Job',err);
   });
+
   job.on('exit',function(code){
+
     console.log('Job [%s] Exited With Status %d',job.pid,code);
-    setTimeout(function(){
-      if(code!==0) start(man);
-    },1000);
+
+    // we assume processes that exit with a non-zero code failed
+    // and need to be restarted. in order to avoid crazyness we
+    // delay the process restart by 1 second
+    if (code!==0) setTimeout(function(){
+      start(man);
+    }, 1000);
+
   });
+
+  // jobs are stored by PID
   jobs[job.pid] = job;
+
   console.log('pid->',job.pid);
+
 }
 
 app.post('/job',function(req,res){
@@ -52,11 +83,9 @@ app.post('/job',function(req,res){
     console.log('Create Job',body.toString());
     try{
       var man = JSON.parse(body);
-      console.log('man->',man);
       start(man);
       res.send(204);
     }catch(e){
-      console.log(e)
       res.send(400,e.toString()+'\n');
     }
   }));
@@ -95,66 +124,42 @@ app.del('/job/:id',function(req,res){
   console.log('Delete Job',req.params.id);
 });
 
-app.listen(PORT,BIND,function(err){
-  
-  if(err) console.log("ERROR Binding to Port");
-  
-  console.log('Server Listening on %s:%s',BIND,PORT);
-  
-  // First Runner
-  // The first runner can be a short process, or a long running process.
-  
-  var exec = process.argv[2];
-  
-  if(!exec) return console.log('Not First Runner Defined');
-  
-  process.env.PATH = '/root/bin:' + process.env.PATH
-  process.env.HOME = '/root'
-  
-  var opts = {
-    env: process.env,
-    cwd: process.cwd(),
-    stdio: 'inherit'
-  };
-  
-  var args = [];
-  for(var i=3; i<process.argv.length; i++){
-    args.push(process.argv[i]);
-  }
-  
-  console.log('Spawning First Runner [%s] with Arguments [%s]',exec,args);
-  
-  var first = spawn(exec,args,opts);
-  
-  first.on('error',function(err){
-    console.log('Error Finding First Runner:',err);
-  });
-  
-  first.on('exit',function(code){
-    if(code!==0){
-      console.log('First Runner Exited Abnormally',code);
-      
-      // If the first-runner exits abnormally we want to abort
-      process.exit(code);
-      
-    }else{
-      
-      // If the first-runner exists normally, we assume it did its job.
-      // Often the first-running boots a bunch of daemon processes
-      // then chooses to exit
-      console.log('First Runner Exited Normally');
-      
-      // If the init daemon is supposed to boot the system, it should
-      // not exit after the first-runner terminates.
-      if( BOOT===0 ){
-        console.log('Init in Non-Boot Mode - Process Exiting');
-        process.exit(code);
-      }
-    }
-  });
-  
-});
+function shutdown() {
+  server.close();
+}
 
-process.on('SIGINT', function(){
-  // Ignore SIGIN 
-});
+function firstRun(err) {
+  if(err) throw err;
+  
+  var runner  = Runner.New();
+
+  runner.cwd  = "/";
+  runner.exec = process.argv[2];
+  runner.args = process.argv.slice(3);
+  runner.envs = process.env;
+
+  var proc    = runner.run();
+
+  // in non-boot mode, we close init after the first
+  // runner exists, otherwise the process just hangs
+  // around waiting for attention that will never come
+  proc.on('exit', function (code, signal) {
+    if (!BOOT) shutdown();
+  });
+
+  // pipe input to first runner in case someone
+  // wants to use an interactive runner
+  proc.stdout.pipe(process.stdout);
+  proc.stderr.pipe(process.stderr);
+  process.stdin.pipe(proc.stdin);
+
+  return;
+}
+
+var server = app.listen(PORT, BIND, firstRun);
+
+// ignore SIGINT in case someone uses a shell as their
+// first runner, in which case we don't want to catch
+// any ^C commands and kill init by accident
+process.on('SIGINT', function () {});
+
