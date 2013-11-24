@@ -11,6 +11,7 @@
   "dependencies": {
     "concat-stream": "~1.0.0",
     "src-sockios": "~0.0.0",
-    "restify": "~2.6.0"
+    "restify": "~2.6.0",
+    "bunyan": "~0.22.0"
   }
 }

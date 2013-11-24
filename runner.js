@@ -32,16 +32,6 @@ Runner.prototype.run = function run() {
   // -- HERE IS THE BEAST -- //
   var proc = spawn(this.exec, this.args, options);
 
-  // bubble errors
-  proc.on('error', function (err) {
-    emitter.emit('error', err);
-  });
-  
-  // bubble exit
-  proc.on('exit', function (code, signal){
-    emitter.emit('exit', code, signal);
-  });
-
   return proc;
   
 }
