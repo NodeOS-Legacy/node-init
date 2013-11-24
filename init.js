@@ -32,6 +32,13 @@ if(0 === io.loopbackUp()){
   log.info('Failed');
 }
 
+function Job(stanza) {
+  this.stanza   = stanza;
+  this.lastExit = null;
+  this.respawn  = 0;
+  this.pid      = -1;
+}
+
 // Keep an Active Job List
 function Init() {
   this.jobs  = {};
@@ -74,12 +81,9 @@ Init.prototype.start = function (name, stanza){
     return;
   });
 
-  var job = this.jobs[name] || {
-    stanza   : stanza,
-    lastExit : null,
-    respawn  : 0,
-    pid      : proc.pid
-  };
+  var job = this.jobs[name] || new Job(stanza);
+
+  job.pid = proc.pid;
 
   this.jobs[name]    = job;
   this.proc[job.pid] = proc;
