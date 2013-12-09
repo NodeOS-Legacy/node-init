@@ -53,7 +53,7 @@ Starting a job requires a JSON payload
 ## Usage
 
 ```
-init -- next command and args
+init [next command and args]
 ```
 
 After init starts its HTTP server,
