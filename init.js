@@ -8,7 +8,6 @@ var assert  = require('assert');
 var cat     = require('concat-stream');
 var io      = require('src-sockios');
 var restify = require('restify');
-var bunyan  = require('bunyan');
 
 //
 var Runner  = require('./runner.js')(spawn);
@@ -18,18 +17,13 @@ var PORT    = process.env.PORT || 1;
 var BIND    = process.env.BIND || '127.0.0.1';
 var BOOT    = process.env.BOOT || 0;
 
-var config  = require('./config.js');
-
-var log     = bunyan.createLogger(config.bunyan);
-
-log.info('Starting Init Process');
+console.log('Starting Init');
 
 // Bring Loopback Device Up for HTTP Process Control
-process.stdout.write('Loopback Device: ');
 if(0 === io.loopbackUp()){
-  log.info("Activated");
+  console.log("Loopback Device Activated");
 }else{
-  log.info('Failed');
+  console.log('Loopback Device Failed');
 }
 
 function Job(stanza) {
@@ -47,7 +41,6 @@ function Init() {
 
 // start a daemon process
 Init.prototype.start = function (name, stanza){
-  log.debug('Init Stanza', stanza);
 
   var init    = this;
   var jobs    = this.jobs;
@@ -61,14 +54,14 @@ Init.prototype.start = function (name, stanza){
   var job     = jobs[name] || new Job(stanza);
 
   proc.on('error', function (err) {
-    log.error('Error Spawning proc', err);
+    console.error('Error Spawning proc', err);
   });
 
   // restart process on failure
   // don't restart when a signal is received
   proc.on('exit', function (code, signal) {
-    if (code===0 || code) log.info("Process [%d] exited with code", proc.pid, code);
-    if (signal) log.info("Process [%d] exited from signal", proc.pid, signal);
+    if (code===0 || code) console.log("Process [%d] exited with code", proc.pid, code);
+    if (signal) console.log("Process [%d] exited from signal", proc.pid, signal);
 
     job.lastExit = code || signal;
     job.status   = 'success';
@@ -79,7 +72,7 @@ Init.prototype.start = function (name, stanza){
     // 
     // we do not restart when a signal kills the process
     if (code) setTimeout(function(){
-      log.info("Respawning Job", name);
+      console.log("Respawning Job", name);
       job.status = 'failed';
       job.respawn++;
       init.start(name, stanza);
@@ -109,21 +102,21 @@ app.put('/job/:name', function(req,res){
       res.send(204, {pid: pid, name: name});
     }
     catch(e){
-      log.error('Failed to parse body', e, body.toString());
+      console.error('Failed to parse body', e, body.toString());
       res.send(400, e);
     }
   }));
 });
 
 app.get('/jobs', function(req,res){
-  log.info('List Job');
+  console.log('List Job');
   res.send(Object.keys(init.jobs));
 });
 
 app.get('/job/:id', function(req,res){
   var job;
   var jobid = req.params.id;
-  log.info('Get Job',req.params.id);
+  console.log('Get Job',req.params.id);
   if(job=init.jobs[jobid]){
     res.send(job);
   }else{
@@ -135,7 +128,7 @@ app.put('/job/:id/sig/:signal', function(req,res){
   var job;
   var jobid  = req.params.id;
   var signal = req.params.signal;
-  log.info('Signal Job %s with %s',req.params.id,req.params.signal);
+  console.log('Signal Job %s with %s',req.params.id,req.params.signal);
   if (job=init.proc[init.jobs[jobid].pid]){
     job.kill(signal);
     res.send(204);
@@ -147,12 +140,13 @@ app.put('/job/:id/sig/:signal', function(req,res){
 
 app.del('/job/:id', function(req,res){
   var name = req.params.id;
-  log.info('Delete Job',name);
+  console.log('Delete Job',name);
   delete init.jobs[name];
 });
 
 function shutdown() {
   server.close();
+  process.exit(0);
 }
 
 function firstRun(err) {
@@ -160,10 +154,15 @@ function firstRun(err) {
   
   var runner  = Runner.New();
 
-  runner.cwd  = "/";
+  runner.cwd  = process.cwd();
   runner.exec = process.argv[2];
   runner.args = process.argv.slice(3);
   runner.envs = process.env;
+  runner.fds  = [
+    process.stdin,
+    process.stdout,
+    process.stderr
+  ];
 
   var proc    = runner.run();
 
@@ -171,16 +170,19 @@ function firstRun(err) {
   // runner exists, otherwise the process just hangs
   // around waiting for attention that will never come
   proc.on('exit', function (code, signal) {
-    if (!BOOT) shutdown();
-    if (code)   log.info("First runner exited with code", code);
-    if (signal) log.info("First runner exited from signal", signal);
+    if (code!==null) console.log("First runner exited with code", code);
+    if (signal) console.log("First runner exited from signal", signal);
+    if (!BOOT) {
+      console.log("Stopping init in non-boot mode");
+      shutdown();
+    }
   });
 
-  // pipe input to first runner in case someone
-  // wants to use an interactive runner
-  proc.stdout.pipe(process.stdout);
-  proc.stderr.pipe(process.stderr);
-  process.stdin.pipe(proc.stdin);
+  proc.on('error', function (err) {
+    console.error(err);
+  });
+
+  console.log('First Runner Started');
 
   return;
 }

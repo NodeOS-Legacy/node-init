@@ -10,6 +10,7 @@ function Runner(module){
   this._module = module;
   this.cwd     = null;
   this.exec    = null;
+  this.fds     = null;
   this.args    = DEFAULT_ARGS;
   this.envs    = DEFAULT_ENVS;
   this.emitter = DEFAULT_EMIT;
@@ -26,7 +27,7 @@ Runner.prototype.run = function run() {
   var options = {
     env   : this.envs,
     cwd   : this.cwd,
-    stdio : 'pipe'
+    stdio : this.fds
   };
   
   // -- HERE IS THE BEAST -- //
