@@ -49,6 +49,7 @@ Init.prototype.start = function (name, stanza){
   runner.cwd  = stanza.cwd;
   runner.exec = stanza.exec;
   runner.args = stanza.args;
+  runner.envs = stanza.env;
 
   var proc    = runner.run();
   var job     = jobs[name] || new Job(stanza);
