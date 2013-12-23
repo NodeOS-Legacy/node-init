@@ -125,13 +125,20 @@ app.put('/job/:name', function(req,res){
 
     // stream stdio
     if (req.params.stdio == 'stream') {
-      console.log('Streaming stdio');
-      proc.stdout.pipe(process.stdout);
-      proc.stderr.pipe(process.stderr);
+      // when streaming, the processes stdio is piped back
+      // to the clien connection
+      proc.stdout.pipe(res);
+      proc.stderr.pipe(res);
       proc.on('close', function () {
         res.end();
       });
-    } 
+      // if the underlying connection is terminated early
+      // unpipe stdio to avoid fucking up the stream
+      res.on('close', function () {
+        proc.stdout.unpipe(res);
+        proc.stderr.unpipe(res);
+      });
+    }
 
     // don't stream stdio
     else {
