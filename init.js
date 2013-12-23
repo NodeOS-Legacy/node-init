@@ -6,7 +6,21 @@ var assert  = require('assert');
 
 //
 var cat     = require('concat-stream');
-var io      = require('src-sockios');
+
+// try to bring loopy up, but this might be a non-linux 
+// system and we don't want to spoil everyones fun
+// just because src-sockios fails
+try {
+  var io      = require('src-sockios');
+  // Bring Loopback Device Up for HTTP Process Control
+  if(0 === io.loopbackUp()){
+    console.log("Loopback Device Activated");
+  }else{
+    console.log('Loopback Device Failed');
+  }
+} catch (e) {
+  // oops no loopback
+}
 var restify = require('restify');
 
 //
@@ -18,13 +32,6 @@ var BIND    = process.env.BIND || '127.0.0.1';
 var BOOT    = process.env.BOOT || 0;
 
 console.log('Starting Init');
-
-// Bring Loopback Device Up for HTTP Process Control
-if(0 === io.loopbackUp()){
-  console.log("Loopback Device Activated");
-}else{
-  console.log('Loopback Device Failed');
-}
 
 function Job(stanza) {
   this.stanza   = stanza;
@@ -50,6 +57,7 @@ Init.prototype.start = function (name, stanza){
   runner.exec = stanza.exec;
   runner.args = stanza.args;
   runner.envs = stanza.env;
+  runner.fds  = 'pipe';
 
   var proc    = runner.run();
   var job     = jobs[name] || new Job(stanza);
@@ -88,25 +96,40 @@ Init.prototype.start = function (name, stanza){
   this.jobs[name]    = job;
   this.proc[job.pid] = proc;
 
-  return job.pid;
+  return proc;
 }
 
 var app  = restify.createServer();
 var init = new Init();
 
+app.use(restify.queryParser());
+app.use(restify.bodyParser());
+
 app.put('/job/:name', function(req,res){
-  req.pipe(cat(function(body){
-    var name = req.params.name;
-    try{
-      var stanza = JSON.parse(body);
-      var pid    = init.start(name, stanza);
-      res.send(204, {pid: pid, name: name});
+  var body = req.body.toString();
+  var name = req.params.name;
+  
+  try{
+    var stanza = JSON.parse(body);
+    var proc   = init.start(name, stanza);
+
+    // stream stdio
+    if (req.params.stdio == 'stream') {
+      console.log('Streaming stdio');
+      proc.stdout.pipe(process.stdout);
+      proc.stderr.pipe(process.stderr);
+      proc.on('close', function () {
+        res.end();
+      });
+    } else {
+      console.log('Not Streaming stdio', req.params);
+      res.send(201);
     }
-    catch(e){
-      console.error('Failed to parse body', e, body.toString());
-      res.send(400, e);
-    }
-  }));
+  }
+  catch(e){
+    console.error('Failed to parse body', e, body.toString());
+    res.send(400, e);
+  }
 });
 
 app.get('/jobs', function(req,res){
