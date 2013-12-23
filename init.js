@@ -2,10 +2,6 @@
 
 var spawn   = require('child_process').spawn;
 var fs      = require('fs');
-var assert  = require('assert');
-
-//
-var cat     = require('concat-stream');
 
 // try to bring loopy up, but this might be a non-linux 
 // system and we don't want to spoil everyones fun
@@ -90,6 +86,19 @@ Init.prototype.start = function (name, stanza){
     return;
   });
 
+  // if stdio is defined, we wire those to the process
+  // stdio is always piped, rather than directly wired
+  // you can define as many stdio as you like
+  // missing values will be skipped
+  // right now, they must be paths to files
+  // if you don't have permission, bad things will happen
+  var stdio, stdin, stderr, stdout;
+  if (stdio = stanza.stdio) {
+    if (stdin  = stdio.stdin)  fs.createReadStream(stdin).pipe(proc.stdin);
+    if (stdout = stdio.stdout) proc.stdout.pipe(fs.createWriteStream(stdout));
+    if (stderr = stdio.stderr) proc.stderr.pipe(fs.createWriteStream(stderr));
+  }
+
   job.pid    = proc.pid;
   job.status = 'running';
 
@@ -105,6 +114,7 @@ var init = new Init();
 app.use(restify.queryParser());
 app.use(restify.bodyParser());
 
+// create a new job, either relative or global
 app.put('/job/:name', function(req,res){
   var body = req.body.toString();
   var name = req.params.name;
@@ -121,7 +131,10 @@ app.put('/job/:name', function(req,res){
       proc.on('close', function () {
         res.end();
       });
-    } else {
+    } 
+
+    // don't stream stdio
+    else {
       console.log('Not Streaming stdio', req.params);
       res.send(201);
     }
@@ -132,11 +145,13 @@ app.put('/job/:name', function(req,res){
   }
 });
 
+// list all the jobs
 app.get('/jobs', function(req,res){
   console.log('List Job');
   res.send(Object.keys(init.jobs));
 });
 
+// get the status of a single job
 app.get('/job/:id', function(req,res){
   var job;
   var jobid = req.params.id;
