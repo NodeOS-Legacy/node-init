@@ -10,9 +10,9 @@ try {
   var io      = require('src-sockios');
   // Bring Loopback Device Up for HTTP Process Control
   if(0 === io.loopbackUp()){
-    console.log("Loopback Device Activated");
+    console.log("loopback device was activated");
   }else{
-    console.log('Loopback Device Failed');
+    console.log('loopback device not activated');
   }
 } catch (e) {
   // oops no loopback
@@ -27,7 +27,10 @@ var PORT    = process.env.PORT || 1;
 var BIND    = process.env.BIND || '127.0.0.1';
 var BOOT    = process.env.BOOT || 0;
 
-console.log('Starting Init');
+console.log('----> starting init');
+console.log('      bind:', BIND);
+console.log('      port:', PORT);
+console.log('      boot:', BOOT);
 
 function Job(stanza) {
   this.stanza   = stanza;
@@ -59,14 +62,14 @@ Init.prototype.start = function (name, stanza){
   var job     = jobs[name] || new Job(stanza);
 
   proc.on('error', function (err) {
-    console.error('Error Spawning proc', err);
+    console.error('----X error spawning process', err);
   });
 
   // restart process on failure
   // don't restart when a signal is received
   proc.on('exit', function (code, signal) {
-    if (code===0 || code) console.log("Process [%d] exited with code", proc.pid, code);
-    if (signal) console.log("Process [%d] exited from signal", proc.pid, signal);
+    if (code===0 || code) console.log("    * process %d exited with code", proc.pid, code);
+    if (signal) console.log("    * process %d exited from signal", proc.pid, signal);
 
     job.lastExit = code || signal;
     job.status   = 'success';
@@ -174,7 +177,7 @@ app.put('/job/:id/sig/:signal', function(req,res){
   var job;
   var jobid  = req.params.id;
   var signal = req.params.signal;
-  console.log('Signal Job %s with %s',req.params.id,req.params.signal);
+  console.log('    * signal Job %s with %s',req.params.id,req.params.signal);
   if (job=init.proc[init.jobs[jobid].pid]){
     job.kill(signal);
     res.send(204);
@@ -216,10 +219,9 @@ function firstRun(err) {
   // runner exists, otherwise the process just hangs
   // around waiting for attention that will never come
   proc.on('exit', function (code, signal) {
-    if (code!==null) console.log("First runner exited with code", code);
-    if (signal) console.log("First runner exited from signal", signal);
+    console.log("<---- first runner exited");
     if (!BOOT) {
-      console.log("Stopping init in non-boot mode");
+      console.log("<---- stopping init because BOOT=0 (set BOOT=1 to override)");
       shutdown();
     }
   });
@@ -228,7 +230,10 @@ function firstRun(err) {
     console.error(err);
   });
 
-  console.log('First Runner Started');
+  console.log('----> starting first runner');
+  console.log('      exec:', runner.exec);
+  console.log('      args:', runner.args);
+  console.log('      cwd :', runner.cwd);
 
   return;
 }
