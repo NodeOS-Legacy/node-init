@@ -128,6 +128,7 @@ app.put('/job/:name', function(req,res){
 
     // stream stdio
     if (req.params.stdio == 'stream') {
+      res.write('streaming stdio\n');
       // when streaming, the processes stdio is piped back
       // to the clien connection
       proc.stdout.pipe(res);
@@ -145,6 +146,7 @@ app.put('/job/:name', function(req,res){
 
     // don't stream stdio
     else {
+      res.write('not streaming stdio\n');
       console.log('Not Streaming stdio', req.params);
       res.send(201);
     }
