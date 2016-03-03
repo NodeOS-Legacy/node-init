@@ -1,3 +1,9 @@
+# Obsolete, using [nodeos-init](https://github.com/piranna/nodeos-init) instead
+
+This repo will remain for reference purposses
+
+----
+
 # NodeOS Init
 
 The init process, typically `/sbin/init`, is a long-lived process started by the kernel during boot.
